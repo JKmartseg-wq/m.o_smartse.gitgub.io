@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Tabela de Mão de Obra</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f14;
+    --surface: #161820;
+    --card: #1c1e28;
+    --border: #2a2d3e;
+    --accent: #f0c040;
+    --accent2: #4fd1c5;
+    --accent3: #f87171;
+    --text: #e8eaf0;
+    --muted: #7880a0;
+    --green: #4ade80;
+    --orange: #fb923c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 13px;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-badge {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 16px; color: #000;
+  }
+  .header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px; font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+  .header-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .rev-badge {
+    background: rgba(240,192,64,0.12);
+    border: 1px solid rgba(240,192,64,0.3);
+    color: var(--accent);
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+  }
+
+  /* LAYOUT */
+  .main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .stat-card.yellow::before { background: var(--accent); }
+  .stat-card.teal::before  { background: var(--accent2); }
+  .stat-card.red::before   { background: var(--accent3); }
+  .stat-card.green::before { background: var(--green); }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; line-height: 1; }
+  .stat-value.yellow { color: var(--accent); }
+  .stat-value.teal   { color: var(--accent2); }
+  .stat-value.red    { color: var(--accent3); }
+  .stat-value.green  { color: var(--green); }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  /* CONTENT GRID */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  /* SIDEBAR — ESCOPO FILTER */
+  .sidebar { display: flex; flex-direction: column; gap: 8px; }
+  .sidebar-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 4px; padding: 0 2px; }
+  .scope-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: all 0.15s;
+    color: var(--text);
+    text-align: left;
+    width: 100%;
+  }
+  .scope-btn:hover { border-color: var(--accent); background: rgba(240,192,64,0.05); }
+  .scope-btn.active { background: rgba(240,192,64,0.1); border-color: var(--accent); }
+  .scope-btn .scope-name { font-size: 12px; line-height: 1.3; }
+  .scope-btn .scope-count {
+    font-size: 10px; color: var(--muted);
+    background: var(--surface); border-radius: 10px;
+    padding: 2px 7px; min-width: 28px; text-align: center; flex-shrink: 0; margin-left: 8px;
+  }
+  .scope-btn.active .scope-count { background: var(--accent); color: #000; }
+
+  /* MAIN PANEL */
+  .panel { display: flex; flex-direction: column; gap: 16px; }
+
+  /* SEARCH & FILTER */
+  .toolbar {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+  }
+  .search-wrap { position: relative; flex: 1; }
+  .search-icon { position: absolute; left: 0; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; }
+  .search-input {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px;
+    width: 100%; padding-left: 20px;
+  }
+  .search-input::placeholder { color: var(--muted); }
+  .sort-select {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px;
+    border-radius: 6px; padding: 5px 10px; cursor: pointer; outline: none;
+  }
+  .result-count { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+  /* TABLE */
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .table-head {
+    display: grid;
+    grid-template-columns: 1fr 70px 100px 100px 100px 105px 60px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    gap: 8px;
+  }
+  .th {
+    font-size: 10px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.1em; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .th:hover { color: var(--accent); }
+  .th.right { justify-content: flex-end; }
+
+  .table-body { max-height: 520px; overflow-y: auto; }
+  .table-body::-webkit-scrollbar { width: 5px; }
+  .table-body::-webkit-scrollbar-track { background: transparent; }
+  .table-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .table-row {
+    display: grid;
+    grid-template-columns: 1fr 70px 100px 100px 100px 105px 60px;
+    padding: 11px 16px;
+    gap: 8px;
+    border-bottom: 1px solid rgba(42,45,62,0.6);
+    align-items: center;
+    transition: background 0.1s;
+    cursor: default;
+  }
+  .table-row:hover { background: rgba(240,192,64,0.04); }
+  .table-row:last-child { border-bottom: none; }
+
+  .td-item { font-size: 12px; color: var(--text); line-height: 1.4; }
+  .td-unit {
+    font-size: 10px; color: var(--muted);
+    background: var(--surface); border-radius: 4px;
+    padding: 2px 6px; text-align: center; width: fit-content;
+    border: 1px solid var(--border);
+  }
+  .td-num { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+  .td-custo   { color: var(--muted); }
+  .td-bruto-min { color: var(--accent2); }
+  .td-bruto-max { color: var(--orange); }
+  .td-medio   { color: var(--accent); font-weight: 500; }
+  .td-imp     { color: var(--accent3); font-size: 11px; text-align: right; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state p { font-size: 13px; }
+
+  /* CHART PANEL */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .chart-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 700;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 16px;
+  }
+  .bar-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 9px;
+  }
+  .bar-label { font-size: 11px; color: var(--muted); width: 130px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { flex: 1; background: var(--surface); border-radius: 4px; height: 10px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+  .bar-val { font-size: 11px; color: var(--text); width: 65px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 900px) {
+    .content-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2,1fr); }
+    .charts-row { grid-template-columns: 1fr; }
+    .table-head, .table-row { grid-template-columns: 1fr 70px 100px 100px; }
+    .td-bruto-max, .td-imp { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-badge">MO</div>
+    <div>
+      <div class="header h1" style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;">Tabela de Mão de Obra</div>
+      <div class="header-meta">Valores Padrões · Referência de Custos</div>
+    </div>
+  </div>
+  <span class="rev-badge">Revisão 3 · 31/07/2024</span>
+</div>
+
+<div class="main">
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card yellow">
+      <div class="stat-label">Total de Itens</div>
+      <div class="stat-value yellow" id="total-items">—</div>
+      <div class="stat-sub">em 12 escopos</div>
+    </div>
+    <div class="stat-card teal">
+      <div class="stat-label">Custo Médio Geral</div>
+      <div class="stat-value teal" id="avg-custo">—</div>
+      <div class="stat-sub">média simples por item</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Bruto Médio Geral</div>
+      <div class="stat-value green" id="avg-medio">—</div>
+      <div class="stat-sub">com lucro incluso</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Item Mais Caro</div>
+      <div class="stat-value red" id="max-custo">—</div>
+      <div class="stat-sub" id="max-item-label">—</div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="content-grid">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-title">Escopo / Categoria</div>
+      <button class="scope-btn active" data-scope="all" onclick="filterScope('all')">
+        <span class="scope-name">Todos os escopos</span>
+        <span class="scope-count" id="cnt-all">—</span>
+      </button>
+    </div>
+
+    <!-- PANEL -->
+    <div class="panel">
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" id="search" type="text" placeholder="Buscar item de mão de obra..." oninput="renderTable()">
+        </div>
+        <select class="sort-select" id="sortCol" onchange="renderTable()">
+          <option value="item">Item (A→Z)</option>
+          <option value="custo_asc">Custo ↑</option>
+          <option value="custo_desc">Custo ↓</option>
+          <option value="bruto_medio_asc">Bruto Médio ↑</option>
+          <option value="bruto_medio_desc">Bruto Médio ↓</option>
+        </select>
+        <span class="result-count" id="result-count">— itens</span>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-wrap">
+        <div class="table-head">
+          <div class="th">Item</div>
+          <div class="th">Unid.</div>
+          <div class="th right">Custo</div>
+          <div class="th right">Bruto Min.</div>
+          <div class="th right">Bruto Max.</div>
+          <div class="th right">Bruto Médio</div>
+          <div class="th right">Imp.</div>
+        </div>
+        <div class="table-body" id="table-body">
+          <div class="empty-state"><div class="icon">⏳</div><p>Carregando...</p></div>
+        </div>
+      </div>
+
+      <!-- CHARTS -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Custo Médio por Escopo</div>
+          <div id="chart-custo"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Itens por Escopo</div>
+          <div id="chart-count"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = [
+  // Despesas e administração de obra
+  {escopo:"Despesas e adm. de obra",item:"Auxílio deslocamento - Veículo leve",unidade:"KM",custo:1.25,lucro_min:0.25,lucro_max:0.50,bruto_min:1.7875,bruto_max:2.10,bruto_medio:1.94375,imposto:0.18},
+  {escopo:"Despesas e adm. de obra",item:"Auxílio deslocamento - Veículo pesado",unidade:"KM",custo:2.45,lucro_min:0.25,lucro_max:0.50,bruto_min:3.5035,bruto_max:4.116,bruto_medio:3.80975,imposto:0.18},
+  {escopo:"Despesas e adm. de obra",item:"Auxílio Alimentação - Por pessoa",unidade:"Dia",custo:60,lucro_min:0.25,lucro_max:0.50,bruto_min:85.80,bruto_max:100.80,bruto_medio:93.30,imposto:0.18},
+  {escopo:"Despesas e adm. de obra",item:"Hospedagem - Por pessoa",unidade:"Dia",custo:85,lucro_min:0.25,lucro_max:0.50,bruto_min:121.55,bruto_max:142.80,bruto_medio:132.175,imposto:0.18},
+  {escopo:"Despesas e adm. de obra",item:"Hora técnica especializada geral",unidade:"Hora",custo:75,lucro_min:0.25,lucro_max:0.75,bruto_min:107.25,bruto_max:144.75,bruto_medio:126.00,imposto:0.18},
+  {escopo:"Despesas e adm. de obra",item:"Diária técnica especializada geral (08h)",unidade:"Dia",custo:500,lucro_min:0.25,lucro_max:0.75,bruto_min:715,bruto_max:965,bruto_medio:840,imposto:0.18},
+  {escopo:"Despesas e adm. de obra",item:"Auxílio de materiais diversos e ferramentarias",unidade:"Mês",custo:500,lucro_min:0.25,lucro_max:0.75,bruto_min:715,bruto_max:965,bruto_medio:840,imposto:0.18},
+  {escopo:"Despesas e adm. de obra",item:"Aluguel local de residência (água, luz, internet)",unidade:"Mês",custo:3500,lucro_min:0.15,lucro_max:0.50,bruto_min:4655,bruto_max:5880,bruto_medio:5267.5,imposto:0.18},
+  {escopo:"Despesas e adm. de obra",item:"Acompanhamento parcial remoto/presencial eng.",unidade:"Mês",custo:1750,lucro_min:0.15,lucro_max:0.50,bruto_min:2327.5,bruto_max:2940,bruto_medio:2633.75,imposto:0.18},
+  {escopo:"Despesas e adm. de obra",item:"Acompanhamento integral remoto/presencial eng.",unidade:"Mês",custo:3500,lucro_min:0.15,lucro_max:0.50,bruto_min:4655,bruto_max:5880,bruto_medio:5267.5,imposto:0.18},
+  // Infraestrutura
+  {escopo:"Infraestrutura",item:"Instalação/organização de rack até 12U",unidade:"Unidade",custo:125,lucro_min:0.25,lucro_max:0.50,bruto_min:178.75,bruto_max:210,bruto_medio:194.375,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação/organização de rack até 24U",unidade:"Unidade",custo:250,lucro_min:0.25,lucro_max:0.50,bruto_min:357.5,bruto_max:420,bruto_medio:388.75,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação/organização de rack até 36U",unidade:"Unidade",custo:375,lucro_min:0.25,lucro_max:0.50,bruto_min:536.25,bruto_max:630,bruto_medio:583.125,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação/organização de rack até 44U",unidade:"Unidade",custo:500,lucro_min:0.25,lucro_max:0.50,bruto_min:715,bruto_max:840,bruto_medio:777.5,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Infraestrutura flexível corrugada (Mangueira)",unidade:"Metro",custo:6.5,lucro_min:0.75,lucro_max:1.20,bruto_min:12.545,bruto_max:15.47,bruto_medio:14.0075,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Infraestrutura rígida termoplástica (Canaleta)",unidade:"Metro",custo:6.5,lucro_min:0.75,lucro_max:1.20,bruto_min:12.545,bruto_max:15.47,bruto_medio:14.0075,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Infraestrutura rígida (Canaleta Piso)",unidade:"Metro",custo:6.5,lucro_min:0.75,lucro_max:1.20,bruto_min:12.545,bruto_max:15.47,bruto_medio:14.0075,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Infraestrutura flexível selada (Sealtubo)",unidade:"Metro",custo:6.5,lucro_min:0.75,lucro_max:1.20,bruto_min:12.545,bruto_max:15.47,bruto_medio:14.0075,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Infraestrutura rígida tubular (Eletrodutos)",unidade:"Metro",custo:6.5,lucro_min:0.75,lucro_max:1.20,bruto_min:12.545,bruto_max:15.47,bruto_medio:14.0075,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Infraestrutura rígida perfilada (Eletrocalhas)",unidade:"Metro",custo:7.5,lucro_min:0.75,lucro_max:1.20,bruto_min:14.475,bruto_max:17.85,bruto_medio:16.1625,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Infraestrutura rígida especial (Leito, Dutotec)",unidade:"Metro",custo:8.5,lucro_min:0.75,lucro_max:1.20,bruto_min:16.405,bruto_max:20.23,bruto_medio:18.3175,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Passagem de cabo em infraestrutura existente",unidade:"Metro",custo:2.5,lucro_min:0.75,lucro_max:1.20,bruto_min:4.825,bruto_max:5.95,bruto_medio:5.3875,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Passagem de cabo em laje (furações)",unidade:"Ponto",custo:45,lucro_min:0.75,lucro_max:1.20,bruto_min:86.85,bruto_max:107.1,bruto_medio:96.975,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Passagem de cabo em parede (furações)",unidade:"Ponto",custo:30,lucro_min:0.75,lucro_max:1.20,bruto_min:57.9,bruto_max:71.4,bruto_medio:64.65,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação de bandeja em parede",unidade:"Metro",custo:25,lucro_min:0.75,lucro_max:1.20,bruto_min:48.25,bruto_max:59.5,bruto_medio:53.875,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação de bandeja em teto",unidade:"Metro",custo:35,lucro_min:0.75,lucro_max:1.20,bruto_min:67.55,bruto_max:83.3,bruto_medio:75.425,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação de suporte/fixação de equipamentos",unidade:"Unidade",custo:45,lucro_min:0.50,lucro_max:0.75,bruto_min:75.6,bruto_max:86.625,bruto_medio:81.1125,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação de nobreak/estabilizador",unidade:"Unidade",custo:120,lucro_min:0.25,lucro_max:0.50,bruto_min:171.6,bruto_max:201.6,bruto_medio:186.6,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação de switch/roteador em rack",unidade:"Unidade",custo:65,lucro_min:0.25,lucro_max:0.50,bruto_min:92.95,bruto_max:109.2,bruto_medio:101.075,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação de servidor em rack",unidade:"Unidade",custo:150,lucro_min:0.25,lucro_max:0.50,bruto_min:214.5,bruto_max:252,bruto_medio:233.25,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Organização de cabeamento em rack",unidade:"Unidade",custo:85,lucro_min:0.25,lucro_max:0.50,bruto_min:121.55,bruto_max:142.8,bruto_medio:132.175,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação de patch panel",unidade:"Unidade",custo:75,lucro_min:0.25,lucro_max:0.50,bruto_min:107.25,bruto_max:126,bruto_medio:116.625,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação de tomada de dados",unidade:"Ponto",custo:25,lucro_min:0.75,lucro_max:1.20,bruto_min:48.25,bruto_max:59.5,bruto_medio:53.875,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Hora técnica em infraestrutura",unidade:"Hora",custo:85,lucro_min:0.50,lucro_max:1.00,bruto_min:142.8,bruto_max:185.5,bruto_medio:164.15,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Diária técnica em infraestrutura",unidade:"Dia",custo:550,lucro_min:0.35,lucro_max:0.70,bruto_min:841.5,bruto_max:1034,bruto_medio:937.75,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação de climatizador de rack",unidade:"Unidade",custo:180,lucro_min:0.25,lucro_max:0.50,bruto_min:257.4,bruto_max:302.4,bruto_medio:279.9,imposto:0.18},
+  {escopo:"Infraestrutura",item:"Instalação de DG/quadro de distribuição",unidade:"Unidade",custo:650,lucro_min:0.25,lucro_max:0.50,bruto_min:929.5,bruto_max:1092,bruto_medio:1010.75,imposto:0.18},
+  // Projetos
+  {escopo:"Projetos",item:"Projeto de infraestrutura de rede - Pequeno",unidade:"Unidade",custo:750,lucro_min:0.25,lucro_max:0.75,bruto_min:1072.5,bruto_max:1447.5,bruto_medio:1260,imposto:0.18},
+  {escopo:"Projetos",item:"Projeto de infraestrutura de rede - Médio",unidade:"Unidade",custo:1500,lucro_min:0.25,lucro_max:0.75,bruto_min:2145,bruto_max:2895,bruto_medio:2520,imposto:0.18},
+  {escopo:"Projetos",item:"Projeto de infraestrutura de rede - Grande",unidade:"Unidade",custo:3500,lucro_min:0.25,lucro_max:0.75,bruto_min:5005,bruto_max:6755,bruto_medio:5880,imposto:0.18},
+  {escopo:"Projetos",item:"Projeto elétrico - Pequeno",unidade:"Unidade",custo:1200,lucro_min:0.25,lucro_max:0.75,bruto_min:1716,bruto_max:2316,bruto_medio:2016,imposto:0.18},
+  {escopo:"Projetos",item:"Projeto elétrico - Médio",unidade:"Unidade",custo:2800,lucro_min:0.25,lucro_max:0.75,bruto_min:4004,bruto_max:5404,bruto_medio:4704,imposto:0.18},
+  {escopo:"Projetos",item:"Projeto elétrico - Grande",unidade:"Unidade",custo:5500,lucro_min:0.25,lucro_max:0.75,bruto_min:7865,bruto_max:10615,bruto_medio:9240,imposto:0.18},
+  {escopo:"Projetos",item:"Projeto de CFTV - Pequeno",unidade:"Unidade",custo:650,lucro_min:0.25,lucro_max:0.75,bruto_min:929.5,bruto_max:1254.5,bruto_medio:1092,imposto:0.18},
+  {escopo:"Projetos",item:"Projeto de CFTV - Médio",unidade:"Unidade",custo:1400,lucro_min:0.25,lucro_max:0.75,bruto_min:2002,bruto_max:2702,bruto_medio:2352,imposto:0.18},
+  {escopo:"Projetos",item:"Projeto de CFTV - Grande",unidade:"Unidade",custo:3200,lucro_min:0.25,lucro_max:0.75,bruto_min:4576,bruto_max:6176,bruto_medio:5376,imposto:0.18},
+  {escopo:"Projetos",item:"Consultoria técnica especializada (hora)",unidade:"Hora",custo:0.75,lucro_min:0.25,lucro_max:0.75,bruto_min:1.07,bruto_max:1.44,bruto_medio:1.26,imposto:0.18},
+  {escopo:"Projetos",item:"Projeto fotovoltaico completo",unidade:"Unidade",custo:9400,lucro_min:0.25,lucro_max:0.75,bruto_min:13440,bruto_max:18140,bruto_medio:15790,imposto:0.18},
+  // Cabeamento estruturado
+  {escopo:"Cabeamento estruturado",item:"Lançamento de cabo UTP Cat5e",unidade:"Metro",custo:1.25,lucro_min:0.75,lucro_max:1.20,bruto_min:2.41,bruto_max:2.975,bruto_medio:2.69,imposto:0.18},
+  {escopo:"Cabeamento estruturado",item:"Lançamento de cabo UTP Cat6",unidade:"Metro",custo:1.50,lucro_min:0.75,lucro_max:1.20,bruto_min:2.895,bruto_max:3.57,bruto_medio:3.23,imposto:0.18},
+  {escopo:"Cabeamento estruturado",item:"Lançamento de cabo UTP Cat6A",unidade:"Metro",custo:1.75,lucro_min:0.75,lucro_max:1.20,bruto_min:3.38,bruto_max:4.165,bruto_medio:3.77,imposto:0.18},
+  {escopo:"Cabeamento estruturado",item:"Terminação de ponto RJ45 (certificado)",unidade:"Ponto",custo:35,lucro_min:0.25,lucro_max:0.50,bruto_min:50.05,bruto_max:58.8,bruto_medio:54.425,imposto:0.18},
+  {escopo:"Cabeamento estruturado",item:"Terminação de ponto RJ45 (não certificado)",unidade:"Ponto",custo:25,lucro_min:0.25,lucro_max:0.50,bruto_min:35.75,bruto_max:42,bruto_medio:38.875,imposto:0.18},
+  {escopo:"Cabeamento estruturado",item:"Certificação de ponto de rede",unidade:"Ponto",custo:15,lucro_min:0.50,lucro_max:1.00,bruto_min:25.2,bruto_max:32.7,bruto_medio:28.95,imposto:0.18},
+  {escopo:"Cabeamento estruturado",item:"Instalação de patch panel 24 portas",unidade:"Unidade",custo:75,lucro_min:0.25,lucro_max:0.50,bruto_min:107.25,bruto_max:126,bruto_medio:116.625,imposto:0.18},
+  {escopo:"Cabeamento estruturado",item:"Hora técnica em cabeamento estruturado",unidade:"Hora",custo:120,lucro_min:0.50,lucro_max:1.00,bruto_min:201.6,bruto_max:261.6,bruto_medio:231.6,imposto:0.18},
+  // Fibra óptica
+  {escopo:"Fibra óptica",item:"Lançamento de fibra óptica monomodo",unidade:"Metro",custo:1.50,lucro_min:0.75,lucro_max:1.20,bruto_min:2.895,bruto_max:3.57,bruto_medio:3.23,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Lançamento de fibra óptica multimodo",unidade:"Metro",custo:1.75,lucro_min:0.75,lucro_max:1.20,bruto_min:3.38,bruto_max:4.165,bruto_medio:3.77,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Emenda de fibra óptica (fusão)",unidade:"Emenda",custo:45,lucro_min:0.50,lucro_max:1.00,bruto_min:75.6,bruto_max:98.1,bruto_medio:86.85,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Terminação de conector SC/LC",unidade:"Conector",custo:15,lucro_min:0.50,lucro_max:1.00,bruto_min:25.2,bruto_max:32.7,bruto_medio:28.95,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Instalação de DIO/caixa de terminação",unidade:"Unidade",custo:85,lucro_min:0.25,lucro_max:0.50,bruto_min:121.55,bruto_max:142.8,bruto_medio:132.175,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Teste OTDR de fibra óptica",unidade:"Ponto",custo:35,lucro_min:0.50,lucro_max:1.00,bruto_min:58.8,bruto_max:76.3,bruto_medio:67.55,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Instalação de transceiver SFP",unidade:"Unidade",custo:25,lucro_min:0.25,lucro_max:0.50,bruto_min:35.75,bruto_max:42,bruto_medio:38.875,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Certificação de link de fibra óptica",unidade:"Link",custo:120,lucro_min:0.50,lucro_max:1.00,bruto_min:201.6,bruto_max:261.6,bruto_medio:231.6,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Hora técnica em fibra óptica",unidade:"Hora",custo:150,lucro_min:0.50,lucro_max:1.00,bruto_min:252,bruto_max:327,bruto_medio:289.5,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Passagem de fibra em duto existente",unidade:"Metro",custo:3.5,lucro_min:0.75,lucro_max:1.20,bruto_min:6.755,bruto_max:8.33,bruto_medio:7.5425,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Instalação de caixa de emenda externa",unidade:"Unidade",custo:95,lucro_min:0.25,lucro_max:0.50,bruto_min:135.85,bruto_max:159.6,bruto_medio:147.725,imposto:0.18},
+  {escopo:"Fibra óptica",item:"Projeto de fibra óptica",unidade:"Unidade",custo:1280,lucro_min:0.25,lucro_max:0.75,bruto_min:1830.4,bruto_max:2470.4,bruto_medio:2150.4,imposto:0.18},
+  // CFTV
+  {escopo:"CFTV",item:"Instalação de câmera IP interna",unidade:"Unidade",custo:55,lucro_min:0.35,lucro_max:0.70,bruto_min:84.15,bruto_max:103.4,bruto_medio:93.775,imposto:0.18},
+  {escopo:"CFTV",item:"Instalação de câmera IP externa",unidade:"Unidade",custo:75,lucro_min:0.35,lucro_max:0.70,bruto_min:114.75,bruto_max:141,bruto_medio:127.875,imposto:0.18},
+  {escopo:"CFTV",item:"Instalação de câmera analógica",unidade:"Unidade",custo:40,lucro_min:0.35,lucro_max:0.70,bruto_min:61.2,bruto_max:75.2,bruto_medio:68.2,imposto:0.18},
+  {escopo:"CFTV",item:"Instalação de câmera PTZ",unidade:"Unidade",custo:150,lucro_min:0.35,lucro_max:0.70,bruto_min:229.5,bruto_max:282,bruto_medio:255.75,imposto:0.18},
+  {escopo:"CFTV",item:"Lançamento de cabo coaxial",unidade:"Metro",custo:2.5,lucro_min:0.75,lucro_max:1.20,bruto_min:4.825,bruto_max:5.95,bruto_medio:5.3875,imposto:0.18},
+  {escopo:"CFTV",item:"Lançamento de cabo CFTV + alimentação",unidade:"Metro",custo:3.5,lucro_min:0.75,lucro_max:1.20,bruto_min:6.755,bruto_max:8.33,bruto_medio:7.5425,imposto:0.18},
+  {escopo:"CFTV",item:"Instalação e configuração de DVR/NVR",unidade:"Unidade",custo:120,lucro_min:0.35,lucro_max:0.70,bruto_min:183.6,bruto_max:225.6,bruto_medio:204.6,imposto:0.18},
+  {escopo:"CFTV",item:"Configuração de acesso remoto CFTV",unidade:"Unidade",custo:85,lucro_min:0.35,lucro_max:0.70,bruto_min:130.05,bruto_max:159.8,bruto_medio:144.925,imposto:0.18},
+  {escopo:"CFTV",item:"Instalação de monitor de exibição",unidade:"Unidade",custo:45,lucro_min:0.25,lucro_max:0.50,bruto_min:64.35,bruto_max:75.6,bruto_medio:69.975,imposto:0.18},
+  {escopo:"CFTV",item:"Instalação de fonte/nobreak CFTV",unidade:"Unidade",custo:65,lucro_min:0.25,lucro_max:0.50,bruto_min:92.95,bruto_max:109.2,bruto_medio:101.075,imposto:0.18},
+  {escopo:"CFTV",item:"Treinamento operação sistema CFTV",unidade:"Unidade",custo:180,lucro_min:0.25,lucro_max:0.50,bruto_min:257.4,bruto_max:302.4,bruto_medio:279.9,imposto:0.18},
+  {escopo:"CFTV",item:"Configuração de câmera (panning, foco)",unidade:"Unidade",custo:15,lucro_min:0.35,lucro_max:0.70,bruto_min:22.95,bruto_max:28.2,bruto_medio:25.575,imposto:0.18},
+  {escopo:"CFTV",item:"Instalação de câmera 360° fisheye",unidade:"Unidade",custo:95,lucro_min:0.35,lucro_max:0.70,bruto_min:145.35,bruto_max:178.6,bruto_medio:161.975,imposto:0.18},
+  {escopo:"CFTV",item:"Instalação de câmera térmica",unidade:"Unidade",custo:350,lucro_min:0.35,lucro_max:0.70,bruto_min:535.5,bruto_max:658,bruto_medio:596.75,imposto:0.18},
+  {escopo:"CFTV",item:"Instalação de câmera LPR (veicular)",unidade:"Unidade",custo:280,lucro_min:0.35,lucro_max:0.70,bruto_min:428.4,bruto_max:526.4,bruto_medio:477.4,imposto:0.18},
+  {escopo:"CFTV",item:"Integração CFTV com VMS",unidade:"Unidade",custo:200,lucro_min:0.35,lucro_max:0.70,bruto_min:306,bruto_max:376,bruto_medio:341,imposto:0.18},
+  {escopo:"CFTV",item:"Instalação de videowall",unidade:"Unidade",custo:580,lucro_min:0.35,lucro_max:0.70,bruto_min:887.4,bruto_max:1090.4,bruto_medio:988.9,imposto:0.18},
+  {escopo:"CFTV",item:"Manutenção preventiva sistema CFTV",unidade:"Unidade",custo:120,lucro_min:0.35,lucro_max:0.70,bruto_min:183.6,bruto_max:225.6,bruto_medio:204.6,imposto:0.18},
+  {escopo:"CFTV",item:"Hora técnica especializada em CFTV",unidade:"Hora",custo:100,lucro_min:0.50,lucro_max:1.00,bruto_min:168,bruto_max:218,bruto_medio:193,imposto:0.18},
+  // Alarme
+  {escopo:"Alarme",item:"Instalação de sensor de presença PIR",unidade:"Unidade",custo:35,lucro_min:0.35,lucro_max:0.70,bruto_min:53.55,bruto_max:65.8,bruto_medio:59.675,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação de sensor de abertura",unidade:"Unidade",custo:20,lucro_min:0.35,lucro_max:0.70,bruto_min:30.6,bruto_max:37.6,bruto_medio:34.1,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação de sensor de vibração",unidade:"Unidade",custo:25,lucro_min:0.35,lucro_max:0.70,bruto_min:38.25,bruto_max:47,bruto_medio:42.625,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação de sensor de fumaça",unidade:"Unidade",custo:30,lucro_min:0.35,lucro_max:0.70,bruto_min:45.9,bruto_max:56.4,bruto_medio:51.15,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação e configuração de central de alarme",unidade:"Unidade",custo:250,lucro_min:0.35,lucro_max:0.70,bruto_min:382.5,bruto_max:470,bruto_medio:426.25,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação de teclado/interface",unidade:"Unidade",custo:55,lucro_min:0.35,lucro_max:0.70,bruto_min:84.15,bruto_max:103.4,bruto_medio:93.775,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação de sirene/buzzer",unidade:"Unidade",custo:40,lucro_min:0.35,lucro_max:0.70,bruto_min:61.2,bruto_max:75.2,bruto_medio:68.2,imposto:0.18},
+  {escopo:"Alarme",item:"Lançamento de cabo de alarme",unidade:"Metro",custo:2.5,lucro_min:0.75,lucro_max:1.20,bruto_min:4.825,bruto_max:5.95,bruto_medio:5.3875,imposto:0.18},
+  {escopo:"Alarme",item:"Configuração de zonas e usuários",unidade:"Unidade",custo:75,lucro_min:0.35,lucro_max:0.70,bruto_min:114.75,bruto_max:141,bruto_medio:127.875,imposto:0.18},
+  {escopo:"Alarme",item:"Configuração de comunicação (GPRS/IP/PSTN)",unidade:"Unidade",custo:95,lucro_min:0.35,lucro_max:0.70,bruto_min:145.35,bruto_max:178.6,bruto_medio:161.975,imposto:0.18},
+  {escopo:"Alarme",item:"Treinamento de operação - Até 2 horas",unidade:"Unidade",custo:130,lucro_min:0.25,lucro_max:0.50,bruto_min:185.9,bruto_max:218.4,bruto_medio:202.15,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação de detector de gás",unidade:"Unidade",custo:45,lucro_min:0.35,lucro_max:0.70,bruto_min:68.85,bruto_max:84.6,bruto_medio:76.725,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação de detector de inundação",unidade:"Unidade",custo:35,lucro_min:0.35,lucro_max:0.70,bruto_min:53.55,bruto_max:65.8,bruto_medio:59.675,imposto:0.18},
+  {escopo:"Alarme",item:"Integração com central de monitoramento",unidade:"Unidade",custo:150,lucro_min:0.35,lucro_max:0.70,bruto_min:229.5,bruto_max:282,bruto_medio:255.75,imposto:0.18},
+  {escopo:"Alarme",item:"Manutenção preventiva sistema de alarme",unidade:"Unidade",custo:95,lucro_min:0.25,lucro_max:0.50,bruto_min:135.85,bruto_max:159.6,bruto_medio:147.725,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação de detector dupla tecnologia",unidade:"Unidade",custo:55,lucro_min:0.35,lucro_max:0.70,bruto_min:84.15,bruto_max:103.4,bruto_medio:93.775,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação de bateria de reserva",unidade:"Unidade",custo:40,lucro_min:0.25,lucro_max:0.50,bruto_min:57.2,bruto_max:67.2,bruto_medio:62.2,imposto:0.18},
+  {escopo:"Alarme",item:"Instalação de PGM/automação por alarme",unidade:"Unidade",custo:65,lucro_min:0.35,lucro_max:0.70,bruto_min:99.45,bruto_max:122.2,bruto_medio:110.825,imposto:0.18},
+  {escopo:"Alarme",item:"Hora técnica especializada em alarme",unidade:"Hora",custo:100,lucro_min:0.50,lucro_max:1.00,bruto_min:168,bruto_max:218,bruto_medio:193,imposto:0.18},
+  {escopo:"Alarme",item:"Diária técnica especializada em alarme",unidade:"Dia",custo:675,lucro_min:0.35,lucro_max:0.70,bruto_min:1032.75,bruto_max:1268.5,bruto_medio:1150.625,imposto:0.18},
+  // Elétrica
+  {escopo:"Elétrica",item:"Instalação de tomada 2P+T 10A",unidade:"Ponto",custo:55,lucro_min:0.35,lucro_max:0.70,bruto_min:84.15,bruto_max:103.4,bruto_medio:93.775,imposto:0.18},
+  {escopo:"Elétrica",item:"Instalação de tomada 2P+T 20A",unidade:"Ponto",custo:65,lucro_min:0.35,lucro_max:0.70,bruto_min:99.45,bruto_max:122.2,bruto_medio:110.825,imposto:0.18},
+  {escopo:"Elétrica",item:"Instalação de ponto de iluminação",unidade:"Ponto",custo:75,lucro_min:0.35,lucro_max:0.70,bruto_min:114.75,bruto_max:141,bruto_medio:127.875,imposto:0.18},
+  {escopo:"Elétrica",item:"Instalação de disjuntor em QDC",unidade:"Unidade",custo:55,lucro_min:0.35,lucro_max:0.70,bruto_min:84.15,bruto_max:103.4,bruto_medio:93.775,imposto:0.18},
+  {escopo:"Elétrica",item:"Montagem de quadro de distribuição",unidade:"Unidade",custo:425,lucro_min:0.25,lucro_max:0.50,bruto_min:607.75,bruto_max:714,bruto_medio:660.875,imposto:0.18},
+  {escopo:"Elétrica",item:"Lançamento de cabo elétrico (até 4mm²)",unidade:"Metro",custo:4.5,lucro_min:0.75,lucro_max:1.20,bruto_min:8.685,bruto_max:10.71,bruto_medio:9.6975,imposto:0.18},
+  {escopo:"Elétrica",item:"Lançamento de cabo elétrico (até 10mm²)",unidade:"Metro",custo:7.5,lucro_min:0.75,lucro_max:1.20,bruto_min:14.475,bruto_max:17.85,bruto_medio:16.1625,imposto:0.18},
+  {escopo:"Elétrica",item:"Instalação de SPDA (para-raios)",unidade:"Ponto",custo:280,lucro_min:0.25,lucro_max:0.75,bruto_min:400.4,bruto_max:540.4,bruto_medio:470.4,imposto:0.18},
+  {escopo:"Elétrica",item:"Instalação de aterramento",unidade:"Ponto",custo:150,lucro_min:0.25,lucro_max:0.50,bruto_min:214.5,bruto_max:252,bruto_medio:233.25,imposto:0.18},
+  {escopo:"Elétrica",item:"Medição de resistência de aterramento",unidade:"Ponto",custo:75,lucro_min:0.50,lucro_max:1.00,bruto_min:126,bruto_max:163.5,bruto_medio:144.75,imposto:0.18},
+  {escopo:"Elétrica",item:"Instalação de DPS (proteção surto)",unidade:"Unidade",custo:85,lucro_min:0.25,lucro_max:0.50,bruto_min:121.55,bruto_max:142.8,bruto_medio:132.175,imposto:0.18},
+  {escopo:"Elétrica",item:"Instalação de gerador a diesel",unidade:"Unidade",custo:350,lucro_min:0.25,lucro_max:0.50,bruto_min:500.5,bruto_max:588,bruto_medio:544.25,imposto:0.18},
+  {escopo:"Elétrica",item:"Hora técnica especializada em elétrica",unidade:"Hora",custo:110,lucro_min:0.50,lucro_max:1.00,bruto_min:184.8,bruto_max:239.8,bruto_medio:212.3,imposto:0.18},
+  {escopo:"Elétrica",item:"Diária técnica especializada em elétrica",unidade:"Dia",custo:700,lucro_min:0.35,lucro_max:0.70,bruto_min:1071,bruto_max:1316,bruto_medio:1193.5,imposto:0.18},
+  // Fotovoltaico
+  {escopo:"Fotovoltaico",item:"Instalação de módulo fotovoltaico",unidade:"Unidade",custo:55,lucro_min:0.35,lucro_max:0.70,bruto_min:84.15,bruto_max:103.4,bruto_medio:93.775,imposto:0.18},
+  {escopo:"Fotovoltaico",item:"Instalação de inversor string",unidade:"Unidade",custo:180,lucro_min:0.35,lucro_max:0.70,bruto_min:275.4,bruto_max:338.4,bruto_medio:306.9,imposto:0.18},
+  {escopo:"Fotovoltaico",item:"Instalação de microinversor",unidade:"Unidade",custo:95,lucro_min:0.35,lucro_max:0.70,bruto_min:145.35,bruto_max:178.6,bruto_medio:161.975,imposto:0.18},
+  {escopo:"Fotovoltaico",item:"Instalação de estrutura de fixação telhado",unidade:"Unidade",custo:120,lucro_min:0.35,lucro_max:0.70,bruto_min:183.6,bruto_max:225.6,bruto_medio:204.6,imposto:0.18},
+  {escopo:"Fotovoltaico",item:"Instalação de estrutura de fixação solo",unidade:"Unidade",custo:200,lucro_min:0.35,lucro_max:0.70,bruto_min:306,bruto_max:376,bruto_medio:341,imposto:0.18},
+  {escopo:"Fotovoltaico",item:"Instalação de string box CC",unidade:"Unidade",custo:150,lucro_min:0.35,lucro_max:0.70,bruto_min:229.5,bruto_max:282,bruto_medio:255.75,imposto:0.18},
+  {escopo:"Fotovoltaico",item:"Instalação de quadro de CA",unidade:"Unidade",custo:175,lucro_min:0.35,lucro_max:0.70,bruto_min:267.75,bruto_max:329,bruto_medio:298.375,imposto:0.18},
+  {escopo:"Fotovoltaico",item:"Comissionamento e testes do sistema",unidade:"Unidade",custo:275,lucro_min:0.25,lucro_max:0.50,bruto_min:393.25,bruto_max:462,bruto_medio:427.625,imposto:0.18},
+  {escopo:"Fotovoltaico",item:"Monitoramento e configuração de datalogger",unidade:"Unidade",custo:130,lucro_min:0.35,lucro_max:0.70,bruto_min:198.9,bruto_max:244.4,bruto_medio:221.65,imposto:0.18},
+  {escopo:"Fotovoltaico",item:"Treinamento operação sistema fotovoltaico",unidade:"Unidade",custo:160,lucro_min:0.25,lucro_max:0.50,bruto_min:228.8,bruto_max:268.8,bruto_medio:248.8,imposto:0.18},
+  {escopo:"Fotovoltaico",item:"Hora técnica em fotovoltaico",unidade:"Hora",custo:130,lucro_min:0.50,lucro_max:1.00,bruto_min:218.4,bruto_max:283.4,bruto_medio:250.9,imposto:0.18},
+  // Controle de acesso
+  {escopo:"Controle de acesso",item:"Instalação de leitor de cartão RFID",unidade:"Unidade",custo:85,lucro_min:0.50,lucro_max:1.00,bruto_min:142.8,bruto_max:185.5,bruto_medio:164.15,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Instalação de leitor biométrico",unidade:"Unidade",custo:120,lucro_min:0.50,lucro_max:1.00,bruto_min:201.6,bruto_max:261.6,bruto_medio:231.6,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Instalação de leitor facial",unidade:"Unidade",custo:180,lucro_min:0.50,lucro_max:1.00,bruto_min:302.4,bruto_max:392.4,bruto_medio:347.4,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Instalação de cancela de pedestre",unidade:"Unidade",custo:250,lucro_min:0.35,lucro_max:0.70,bruto_min:382.5,bruto_max:470,bruto_medio:426.25,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Instalação de cancela veicular",unidade:"Unidade",custo:360,lucro_min:0.35,lucro_max:0.70,bruto_min:550.8,bruto_max:676.8,bruto_medio:613.8,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Instalação de trava eletromagnética",unidade:"Unidade",custo:65,lucro_min:0.50,lucro_max:1.00,bruto_min:109.2,bruto_max:141.7,bruto_medio:125.45,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Instalação de fecho elétrico",unidade:"Unidade",custo:55,lucro_min:0.50,lucro_max:1.00,bruto_min:92.4,bruto_max:119.9,bruto_medio:106.15,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Instalação de botão de saída emergência",unidade:"Unidade",custo:0,lucro_min:0.35,lucro_max:0.70,bruto_min:0,bruto_max:0,bruto_medio:0,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Instalação de controladora de acesso",unidade:"Unidade",custo:95,lucro_min:0.50,lucro_max:1.00,bruto_min:159.6,bruto_max:207.1,bruto_medio:183.35,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Configuração de usuários e níveis de acesso",unidade:"Unidade",custo:80,lucro_min:0.35,lucro_max:0.70,bruto_min:122.4,bruto_max:150.4,bruto_medio:136.4,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Integração com sistema de CFTV",unidade:"Unidade",custo:150,lucro_min:0.35,lucro_max:0.70,bruto_min:229.5,bruto_max:282,bruto_medio:255.75,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Treinamento operação controle de acesso",unidade:"Unidade",custo:120,lucro_min:0.25,lucro_max:0.50,bruto_min:171.6,bruto_max:201.6,bruto_medio:186.6,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Manutenção preventiva - Controle de acesso",unidade:"Unidade",custo:130,lucro_min:0.25,lucro_max:0.50,bruto_min:185.9,bruto_max:218.4,bruto_medio:202.15,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Instalação de interfone/videofone",unidade:"Unidade",custo:95,lucro_min:0.35,lucro_max:0.70,bruto_min:145.35,bruto_max:178.6,bruto_medio:161.975,imposto:0.18},
+  {escopo:"Controle de acesso",item:"Hora técnica especializada em Controle de Acesso",unidade:"Hora",custo:100,lucro_min:0.50,lucro_max:1.00,bruto_min:168,bruto_max:218,bruto_medio:193,imposto:0.18},
+  // Cerca elétrica
+  {escopo:"Cerca elétrica",item:"Instalação e fixação de concertina simples",unidade:"Metro",custo:27.5,lucro_min:0.35,lucro_max:0.70,bruto_min:42.075,bruto_max:51.7,bruto_medio:46.8875,imposto:0.18},
+  {escopo:"Cerca elétrica",item:"Instalação e fixação de concertina dupla",unidade:"Metro",custo:32.5,lucro_min:0.35,lucro_max:0.70,bruto_min:49.725,bruto_max:61.1,bruto_medio:55.4125,imposto:0.18},
+  {escopo:"Cerca elétrica",item:"Instalação de cerca elétrica até 06 isoladores",unidade:"Metro",custo:7.5,lucro_min:0.35,lucro_max:0.70,bruto_min:11.475,bruto_max:14.1,bruto_medio:12.7875,imposto:0.18},
+  {escopo:"Cerca elétrica",item:"Instalação de cerca elétrica até 10 isoladores",unidade:"Metro",custo:8.5,lucro_min:0.35,lucro_max:0.70,bruto_min:13.005,bruto_max:15.98,bruto_medio:14.4925,imposto:0.18},
+  {escopo:"Cerca elétrica",item:"Instalação e configuração de central eletrificadora",unidade:"Unidade",custo:265,lucro_min:0.35,lucro_max:0.70,bruto_min:405.45,bruto_max:498.2,bruto_medio:451.825,imposto:0.18},
+  {escopo:"Cerca elétrica",item:"Configuração de usuário, controle e acionadores",unidade:"Unidade",custo:55,lucro_min:0.35,lucro_max:0.70,bruto_min:84.15,bruto_max:103.4,bruto_medio:93.775,imposto:0.18},
+  {escopo:"Cerca elétrica",item:"Treinamento de operação e administração - 2h",unidade:"Unidade",custo:160,lucro_min:0.35,lucro_max:0.70,bruto_min:244.8,bruto_max:300.8,bruto_medio:272.8,imposto:0.18},
+  {escopo:"Cerca elétrica",item:"Hora técnica especializada em cerca elétrica",unidade:"Hora",custo:120,lucro_min:0.50,lucro_max:1.00,bruto_min:201.6,bruto_max:261.6,bruto_medio:231.6,imposto:0.18},
+  // Telefonia
+  {escopo:"Telefonia",item:"Lançamento de cabeamento telefônico até 10 pares",unidade:"Metro",custo:1.75,lucro_min:0.50,lucro_max:1.00,bruto_min:2.94,bruto_max:3.815,bruto_medio:3.3775,imposto:0.18},
+  {escopo:"Telefonia",item:"Lançamento de cabeamento telefônico até 30 pares",unidade:"Metro",custo:1.95,lucro_min:0.50,lucro_max:1.00,bruto_min:3.276,bruto_max:4.251,bruto_medio:3.7635,imposto:0.18},
+  {escopo:"Telefonia",item:"Lançamento de cabeamento telefônico até 50 pares",unidade:"Metro",custo:2.15,lucro_min:0.50,lucro_max:1.00,bruto_min:3.612,bruto_max:4.687,bruto_medio:4.1495,imposto:0.18},
+  {escopo:"Telefonia",item:"Instalação e montagem Voicepanel até 10 pares",unidade:"Unidade",custo:75,lucro_min:0.25,lucro_max:0.50,bruto_min:107.25,bruto_max:126,bruto_medio:116.625,imposto:0.18},
+  {escopo:"Telefonia",item:"Instalação e montagem Voicepanel até 30 pares",unidade:"Unidade",custo:175,lucro_min:0.25,lucro_max:0.50,bruto_min:250.25,bruto_max:294,bruto_medio:272.125,imposto:0.18},
+  {escopo:"Telefonia",item:"Instalação e montagem Voicepanel até 50 pares",unidade:"Unidade",custo:275,lucro_min:0.25,lucro_max:0.50,bruto_min:393.25,bruto_max:462,bruto_medio:427.625,imposto:0.18},
+  {escopo:"Telefonia",item:"Instalação e configuração de central analógica",unidade:"Unidade",custo:365,lucro_min:0.25,lucro_max:0.50,bruto_min:521.95,bruto_max:613.2,bruto_medio:567.575,imposto:0.18},
+  {escopo:"Telefonia",item:"Instalação e configuração de central telefônica IP",unidade:"Unidade",custo:560,lucro_min:0.25,lucro_max:0.50,bruto_min:800.8,bruto_max:940.8,bruto_medio:870.8,imposto:0.18},
+  {escopo:"Telefonia",item:"Instalação e configuração de ramal analógico",unidade:"Unidade",custo:17.5,lucro_min:0.25,lucro_max:0.50,bruto_min:25.025,bruto_max:29.4,bruto_medio:27.2125,imposto:0.18},
+  {escopo:"Telefonia",item:"Instalação e configuração de ramal IP",unidade:"Unidade",custo:35,lucro_min:0.25,lucro_max:0.50,bruto_min:50.05,bruto_max:58.8,bruto_medio:54.425,imposto:0.18},
+  {escopo:"Telefonia",item:"Treinamento de operação e administração - 2h",unidade:"Unidade",custo:180,lucro_min:0.25,lucro_max:0.50,bruto_min:257.4,bruto_max:302.4,bruto_medio:279.9,imposto:0.18},
+  {escopo:"Telefonia",item:"Hora técnica especializada em telefonia",unidade:"Hora",custo:150,lucro_min:0.50,lucro_max:1.00,bruto_min:252,bruto_max:327,bruto_medio:289.5,imposto:0.18},
+];
+
+// State
+let currentScope = 'all';
+let sortKey = 'item';
+
+function fmt(n) {
+  if (n === 0) return 'R$ 0,00';
+  if (n < 10) return 'R$ ' + n.toFixed(4).replace('.',',');
+  return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtPct(n) { return (n*100).toFixed(0)+'%'; }
+
+function getScopes() {
+  const map = {};
+  DATA.forEach(d => { map[d.escopo] = (map[d.escopo]||0)+1; });
+  return map;
+}
+
+function buildSidebar() {
+  const scopes = getScopes();
+  const sb = document.querySelector('.sidebar');
+  document.getElementById('cnt-all').textContent = DATA.length;
+
+  Object.entries(scopes).forEach(([name, cnt]) => {
+    const btn = document.createElement('button');
+    btn.className = 'scope-btn';
+    btn.dataset.scope = name;
+    btn.onclick = () => filterScope(name);
+    btn.innerHTML = `<span class="scope-name">${name}</span><span class="scope-count">${cnt}</span>`;
+    sb.appendChild(btn);
+  });
+}
+
+function filterScope(scope) {
+  currentScope = scope;
+  document.querySelectorAll('.scope-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.scope === scope);
+  });
+  renderTable();
+}
+
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  let rows = DATA.filter(d => {
+    const matchScope = currentScope === 'all' || d.escopo === currentScope;
+    const matchQ = !q || d.item.toLowerCase().includes(q) || d.escopo.toLowerCase().includes(q) || d.unidade.toLowerCase().includes(q);
+    return matchScope && matchQ;
+  });
+  const sort = document.getElementById('sortCol').value;
+  if (sort === 'item') rows.sort((a,b) => a.item.localeCompare(b.item,'pt-BR'));
+  else if (sort === 'custo_asc') rows.sort((a,b) => a.custo - b.custo);
+  else if (sort === 'custo_desc') rows.sort((a,b) => b.custo - a.custo);
+  else if (sort === 'bruto_medio_asc') rows.sort((a,b) => a.bruto_medio - b.bruto_medio);
+  else if (sort === 'bruto_medio_desc') rows.sort((a,b) => b.bruto_medio - a.bruto_medio);
+  return rows;
+}
+
+function renderTable() {
+  const rows = getFiltered();
+  document.getElementById('result-count').textContent = rows.length + ' itens';
+  const body = document.getElementById('table-body');
+  if (rows.length === 0) {
+    body.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>Nenhum item encontrado.</p></div>';
+    return;
+  }
+  body.innerHTML = rows.map(d => `
+    <div class="table-row">
+      <div class="td-item">${d.item}</div>
+      <div><span class="td-unit">${d.unidade}</span></div>
+      <div class="td-num td-custo">${fmt(d.custo)}</div>
+      <div class="td-num td-bruto-min">${fmt(d.bruto_min)}</div>
+      <div class="td-num td-bruto-max">${fmt(d.bruto_max)}</div>
+      <div class="td-num td-medio">${fmt(d.bruto_medio)}</div>
+      <div class="td-num td-imp">${fmtPct(d.imposto)}</div>
+    </div>
+  `).join('');
+}
+
+function renderStats() {
+  const valid = DATA.filter(d => d.custo > 0);
+  document.getElementById('total-items').textContent = DATA.length;
+  const avgC = valid.reduce((s,d) => s+d.custo,0)/valid.length;
+  const avgM = valid.reduce((s,d) => s+d.bruto_medio,0)/valid.length;
+  document.getElementById('avg-custo').textContent = fmt(avgC);
+  document.getElementById('avg-medio').textContent = fmt(avgM);
+  const max = DATA.reduce((a,b) => b.custo > a.custo ? b : a);
+  document.getElementById('max-custo').textContent = fmt(max.custo);
+  document.getElementById('max-item-label').textContent = max.item.substring(0,35)+'…';
+}
+
+function renderCharts() {
+  const scopes = getScopes();
+  const names = Object.keys(scopes);
+
+  // avg custo per scope
+  const avgMap = {};
+  names.forEach(n => {
+    const items = DATA.filter(d => d.escopo === n && d.custo > 0);
+    avgMap[n] = items.length ? items.reduce((s,d)=>s+d.custo,0)/items.length : 0;
+  });
+  const sorted = [...names].sort((a,b) => avgMap[b]-avgMap[a]);
+  const maxAvg = Math.max(...sorted.map(n=>avgMap[n]));
+
+  const colors = ['#f0c040','#4fd1c5','#f87171','#4ade80','#fb923c','#a78bfa','#38bdf8','#f472b6','#34d399','#fbbf24','#60a5fa','#e879f9'];
+
+  document.getElementById('chart-custo').innerHTML = sorted.map((n,i) => `
+    <div class="bar-row">
+      <div class="bar-label" title="${n}">${n}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(avgMap[n]/maxAvg*100).toFixed(1)}%;background:${colors[i%colors.length]}"></div>
+      </div>
+      <div class="bar-val">${fmt(avgMap[n])}</div>
+    </div>
+  `).join('');
+
+  const maxCnt = Math.max(...names.map(n=>scopes[n]));
+  document.getElementById('chart-count').innerHTML = [...names].sort((a,b)=>scopes[b]-scopes[a]).map((n,i) => `
+    <div class="bar-row">
+      <div class="bar-label" title="${n}">${n}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(scopes[n]/maxCnt*100).toFixed(1)}%;background:${colors[i%colors.length]}"></div>
+      </div>
+      <div class="bar-val">${scopes[n]} itens</div>
+    </div>
+  `).join('');
+}
+
+// Init
+buildSidebar();
+renderStats();
+renderTable();
+renderCharts();
+</script>
+</body>
+</html>
